@@ -52,33 +52,6 @@ public class Loan {
         this.startTime = 0;
     }
 
-    public void acceptProposal(String responderAddress, long startTime) {
-        if (this.status != LoanStatus.REQUESTED) {
-            throw new IllegalStateException("Заявка уже неактивна или принята");
-        }
-
-        if (this.proposalType == ProposalType.BORROW) {
-            this.lenderAddress = responderAddress;
-        } else {
-            this.borrowerAddress = responderAddress;
-        }
-
-        this.startTime = startTime;
-
-        BigDecimal interestMultiplier = BigDecimal.ONE.add(this.interestRate);
-        this.remainingFiatDebt = this.loanFiatAmount.multiply(interestMultiplier);
-        this.remainingTokenDebt = this.loanTokenAmount.multiply(interestMultiplier);
-
-        this.status = LoanStatus.ACTIVE;
-    }
-
-    public void cancel() {
-        if (this.status != LoanStatus.REQUESTED) {
-            throw new IllegalStateException("Нельзя отменить уже активный или закрытый займ");
-        }
-        this.status = LoanStatus.CANCELLED;
-    }
-
     public boolean isExpired(long currentTime) {
         if (this.status != LoanStatus.ACTIVE) return false;
         long durationMillis = Math.multiplyExact(durationInSeconds, 1000L);

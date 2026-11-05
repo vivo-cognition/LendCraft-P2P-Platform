@@ -122,19 +122,18 @@ public class BlockchainController {
     }
 
     @PostMapping("/mine")
-    public BlockEntity mineNewBlock() {
-        String previousHash = blockchain.getChain().get(blockchain.getChain().size() - 1).getHash();
-        int currentDifficulty = blockchain.getCurrentDifficulty();
-
-        List<Transaction> pendingTransactions = blockchain.getMemPool() != null ?
-                blockchain.getMemPool().getPendingTransactions() : List.of();
-
-        Block newBlock = new Block(previousHash, pendingTransactions, currentDifficulty);
-
-        blockchain.getChain().add(newBlock);
-
-        BlockEntity blockEntity = mapper.toEntity(newBlock);
-        return blockRepository.save(blockEntity);
+    public ResponseEntity<?> mineNewBlock(@RequestParam(defaultValue = "SYSTEM_MINER") String minerAddress) {
+        try {
+            Block newBlock = blockchain.mineBlock(minerAddress);
+            if (newBlock == null) {
+                return ResponseEntity.badRequest().body("Нет транзакций в мемпуле для майнинга!");
+            }
+            BlockEntity blockEntity = mapper.toEntity(newBlock);
+            blockRepository.save(blockEntity);
+            return ResponseEntity.ok(blockEntity);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Критическая ошибка при майнинге: " + e.getMessage());
+        }
     }
 
     @GetMapping("/status")

@@ -51,13 +51,4 @@ public class CryptoUtils {
             throw new RuntimeException(e);
         }
     }
-    public static PrivateKey stringToPrivateKey(String keyString) {
-        try {
-            byte[] keyBytes = Base64.getDecoder().decode(keyString);
-            KeyFactory keyFactory = KeyFactory.getInstance("EC");
-            return keyFactory.generatePrivate(new java.security.spec.PKCS8EncodedKeySpec(keyBytes));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 }
