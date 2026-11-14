@@ -13,8 +13,8 @@ public class Transaction {
     public static final String ESCROW_ADDRESS = "SYSTEM_ESCROW_HOLDER";
     
     private String txId;
-    private List<UTXO> inputs;
-    private List<Output> outputs;
+    private List<UTXO> inputs = new ArrayList<>();
+    private List<Output> outputs = new ArrayList<>();
     private long timestamp;
     private byte[] signature;
     private String publicKeyString;
@@ -120,6 +120,13 @@ public class Transaction {
 
         if (isFiatLoanEvent) {
             return txId != null;
+        }
+        boolean isSignedLoanActionWithoutInputs = (type == TransactionType.LOAN_ACCEPT || type == TransactionType.LOAN_CANCEL)
+                && loanData != null
+                && inputs.isEmpty()
+                && outputs.isEmpty();
+        if (isSignedLoanActionWithoutInputs) {
+            return txId !=  null && verifySignature();
         }
         if (inputs.isEmpty() || outputs.isEmpty()) {
             System.out.println("Нет входов или выходов");

@@ -29,7 +29,10 @@ public class CryptoUtils {
 
     public static boolean verify(PublicKey publicKey, String data, byte[] signature) {
         try {
-            Signature sig = Signature.getInstance("SHA256withECDSA");
+            String algorithm = (signature != null && signature.length == 64)
+                    ? "SHA256withECDSAinP1363Format"
+                    : "SHA256withECDSA";
+            Signature sig = Signature.getInstance(algorithm);
             sig.initVerify(publicKey);
             sig.update(data.getBytes());
             return sig.verify(signature);

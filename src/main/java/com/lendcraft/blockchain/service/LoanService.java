@@ -174,4 +174,53 @@ public class LoanService {
         return loanRepository.save(entity);
     }
 
+    @Transactional
+    public void processBlockchainCancel(Loan loanModel, String creatorAddress) {
+        cancelProposal(loanModel.getLoanId(), creatorAddress);
+    }
+
+    @Transactional
+    public void processBlockchainCreate(Loan loanModel) {
+        if (loanModel == null || loanRepository.existsById(loanModel.getLoanId())) {
+            return;
+        }
+
+        LoanEntity entity = new LoanEntity();
+        entity.setLoanId(loanModel.getLoanId());
+        entity.setProposalType(loanModel.getProposalType());
+        entity.setBorrowerAddress(loanModel.getBorrowerAddress());
+        entity.setLenderAddress(loanModel.getLenderAddress());
+        entity.setLoanFiatAmount(loanModel.getLoanFiatAmount());
+        entity.setLoanTokenAmount(loanModel.getLoanTokenAmount());
+        entity.setCollateralFiatAmount(loanModel.getCollateralFiatAmount());
+        entity.setCollateralTokenAmount(loanModel.getCollateralTokenAmount());
+        entity.setCollateralDocument(loanModel.getCollateralDocument());
+        entity.setInterestRate(loanModel.getInterestRate());
+        entity.setDurationInSeconds(loanModel.getDurationInSeconds());
+        entity.setStatus(LoanStatus.REQUESTED);
+        entity.setRemainingFiatDebt(BigDecimal.ZERO);
+        entity.setRemainingTokenDebt(BigDecimal.ZERO);
+
+        String creatorAddress = (loanModel.getProposalType() == ProposalType.BORROW)
+                ? loanModel.getBorrowerAddress()
+                : loanModel.getLenderAddress();
+
+        BigDecimal fiatToLock = (loanModel.getProposalType() == ProposalType.BORROW)
+                ? loanModel.getCollateralFiatAmount()
+                : loanModel.getLoanFiatAmount();
+
+        if (fiatToLock != null && fiatToLock.compareTo(BigDecimal.ZERO) > 0) {
+            UserEntity creatorUser = userRepository.findByPublicKey(creatorAddress)
+                    .orElseThrow(() -> new IllegalArgumentException("Создатель заявки не найден в БД"));
+            if (creatorUser.getFiatBalance().compareTo(fiatToLock) < 0) {
+                throw new IllegalStateException("Недостаточно фиатных средств для гибридной заявки!");
+            }
+            creatorUser.setFiatBalance(creatorUser.getFiatBalance().subtract(fiatToLock));
+            userRepository.save(creatorUser);
+        }
+
+        loanRepository.save(entity);
+        System.out.println("🔗 Блокчейн-создание: Заявка " + entity.getLoanId() + " зафиксирована в БД!");
+    }
+
 }

@@ -54,6 +54,11 @@ public class BlockchainController {
         this.loanRepository = loanRepository;
 
         this.blockchain = blockchain;
+    }
+
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    @org.springframework.transaction.annotation.Transactional
+    public void onApplicationReady() {
         if (blockRepository.count() == 0) {
             System.out.println("🔗 База данных пуста. Сохраняем Генезис-блок в PostgreSQL...");
             if (blockchain.getChain() != null && !blockchain.getChain().isEmpty()) {
@@ -65,9 +70,9 @@ public class BlockchainController {
             System.out.println("💾 Найдена существующая цепь в БД. Загружаем блоки в память ядра...");
             blockchain.getChain().clear();
             blockchain.getUtxoSet().clear();
-            List<BlockEntity> entities = blockRepository.findAll();
+            List<BlockEntity> entities = blockRepository.findAllByOrderByTimestampAsc();
 
-            for(BlockEntity entity : entities) {
+            for (BlockEntity entity : entities) {
                 Block block = mapper.toModel(entity);
                 blockchain.getChain().add(block);
                 if (block.getTransactions() != null) {
@@ -79,7 +84,6 @@ public class BlockchainController {
             System.out.println("✅ Ядро блокчейна успешно восстановлено! Загружено блоков: " + blockchain.getChain().size());
             System.out.println("📈 Актуальная сложность сети: " + blockchain.getCurrentDifficulty());
         }
-
     }
 
     @GetMapping("/balance")
@@ -320,7 +324,10 @@ public class BlockchainController {
             systemTx.setTxId(systemTx.calculateHash());
 
             blockchain.sendTransaction(systemTx);
-            blockchain.mineBlock("SYSTEM_MINER");
+            Block minedBlock = blockchain.mineBlock("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5SG7/Hh797z6nRfaTgubralo0m1UjXdGCTGsUZ3U8PEe/xUmMFRy76X63Jm/Nci+usYRF4c9WrATZitsqlaMaw==");
+            if (minedBlock != null) {
+                blockRepository.save(mapper.toEntity(minedBlock));
+            }
 
             return ResponseEntity.ok(loanRepository.findById(loanId).orElse(loanEntity));
         } catch (Exception e) {

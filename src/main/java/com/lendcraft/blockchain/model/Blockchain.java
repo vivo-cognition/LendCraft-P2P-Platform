@@ -90,12 +90,41 @@ public class Blockchain {
             utxoSet.processTransaction(tx);
         }
         for (Transaction tx : validTxs) {
-            if (tx.getType() == TransactionType.LOAN_ACCEPT && tx.getLoanData() != null) {
-                loanService.processBlockchainAccept(tx.getLoanData(), tx.getPublicKeyString());
-            } else if (tx.getType() == TransactionType.LOAN_REPAY && tx.getLoanData() != null) {
-                loanService.processBlockchainRepay(tx.getLoanData(), tx.getAmount(), java.math.BigDecimal.ZERO);
+            Loan loan = tx.getLoanData();
+            if (loan == null) continue;
+
+            if (tx.getType() == TransactionType.LOAN_REQUEST) {
+                loanService.processBlockchainCreate(loan);
+
+            } else if (tx.getType() == TransactionType.LOAN_ACCEPT) {
+                loanService.processBlockchainAccept(loan, tx.getPublicKeyString());
+                if (loan.getProposalType() == ProposalType.LEND
+                        && loan.getLoanTokenAmount() != null
+                        && loan.getLoanTokenAmount().compareTo(BigDecimal.ZERO) > 0) {
+                    Transaction escrowOut = createSystemEscrowTransaction(
+                            tx.getPublicKeyString(), loan.getLoanTokenAmount(), TransactionType.LOAN_ACCEPT, loan);
+                    utxoSet.processTransaction(escrowOut);
+                }
+            } else if (tx.getType() == TransactionType.LOAN_CANCEL) {
+                loanService.processBlockchainCancel(loan, tx.getPublicKeyString());
+                BigDecimal tokensToRefund = (loan.getProposalType() == ProposalType.BORROW)
+                        ? loan.getCollateralTokenAmount()
+                        : loan.getLoanTokenAmount();
+                if (tokensToRefund != null && tokensToRefund.compareTo(BigDecimal.ZERO) > 0) {
+                    Transaction escrowRefund = createSystemEscrowTransaction(
+                            tx.getPublicKeyString(), tokensToRefund, TransactionType.LOAN_CANCEL, loan);
+                    utxoSet.processTransaction(escrowRefund);
+                }
+            } else if (tx.getType() == TransactionType.LOAN_REPAY) {
+                loanService.processBlockchainRepay(loan, tx.getAmount(), BigDecimal.ZERO);
+                if (loan.getCollateralTokenAmount() != null && loan.getCollateralTokenAmount().compareTo(BigDecimal.ZERO) > 0) {
+                    Transaction escrowReturn = createSystemEscrowTransaction(
+                            tx.getPublicKeyString(), loan.getCollateralTokenAmount(), TransactionType.LOAN_REPAY, loan);
+                    utxoSet.processTransaction(escrowReturn);
+                }
             }
         }
+
         for (Transaction tx : validTxs) {
             memPool.removeTransaction(tx.getTxId());
         }

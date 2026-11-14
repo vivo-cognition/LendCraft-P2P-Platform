@@ -13,4 +13,5 @@ public interface BlockRepository extends JpaRepository<BlockEntity, String> {
     @Query("SELECT new com.lendcraft.blockchain.dto.BlockStatusDto(b.hash, b.difficulty) " +
             "FROM BlockEntity b ORDER BY b.timestamp DESC")
     List<BlockStatusDto> findLatestBlockStatusRaw(Pageable pageable);
+    List<BlockEntity> findAllByOrderByTimestampAsc();
 }
