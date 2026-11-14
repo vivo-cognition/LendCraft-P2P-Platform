@@ -27,6 +27,16 @@ public class Block {
         this.transactions = new ArrayList<>();
     }
 
+    public Block(String hash, String previousHash, List<Transaction> transactions, String merkleRoot, long timestamp, int nonce, int difficulty) {
+        this.hash = hash;
+        this.previousHash=previousHash;
+        this.transactions=transactions != null ? transactions : new ArrayList<>();
+        this.merkleRoot = merkleRoot;
+        this.timestamp = timestamp;
+        this.nonce=nonce;
+        this.difficulty=difficulty;
+    }
+
     public void mineBlock() {
         String target="0".repeat(difficulty);
         long startTime=System.currentTimeMillis();

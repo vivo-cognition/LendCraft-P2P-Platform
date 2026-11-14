@@ -68,14 +68,15 @@ public class BlockchainMapper {
             }
         }
 
-        Block block = new Block(entity.getPreviousHash(), transactions, entity.getDifficulty());
-
-        block.setHash(entity.getHash());
-        block.setTimestamp(entity.getTimestamp());
-        block.setNonce(entity.getNonce());
-        block.setMerkleRoot(entity.getMerkleRoot());
-
-        return block;
+        return new Block(
+                entity.getHash(),
+                entity.getPreviousHash(),
+                transactions,
+                entity.getMerkleRoot(),
+                entity.getTimestamp(),
+                entity.getNonce(),
+                entity.getDifficulty()
+        );
     }
 
     public Transaction toModel(TransactionEntity txEntity) {
