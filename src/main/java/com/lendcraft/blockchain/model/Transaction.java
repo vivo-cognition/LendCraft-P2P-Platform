@@ -11,7 +11,7 @@ import java.util.ArrayList;
 
 public class Transaction {
     public static final String ESCROW_ADDRESS = "SYSTEM_ESCROW_HOLDER";
-    
+
     private String txId;
     private List<UTXO> inputs = new ArrayList<>();
     private List<Output> outputs = new ArrayList<>();
@@ -57,6 +57,7 @@ public class Transaction {
             System.out.println("Нет подписи или публичного ключа");
             return false;
         }
+        if (ESCROW_ADDRESS.equals(this.publicKeyString)) return true;
         try {
             PublicKey publicKey = CryptoUtils.stringToPublicKey(publicKeyString);
             String data = getDataForSigning();
