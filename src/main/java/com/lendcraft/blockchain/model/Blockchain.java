@@ -75,11 +75,41 @@ public class Blockchain {
             System.out.println("⏸ Все транзакции из мемпула оказались невалидными.");
             return null;
         }
+        List<Transaction> escrowTxs = new ArrayList<>();
+        for (Transaction tx : validTxs) {
+            Loan loan = tx.getLoanData();
+            if (loan == null) continue;
+
+            if (tx.getType() == TransactionType.LOAN_ACCEPT
+                    && loan.getProposalType() == ProposalType.LEND
+                    && loan.getLoanTokenAmount() != null
+                    && loan.getLoanTokenAmount().compareTo(BigDecimal.ZERO) > 0) {
+                escrowTxs.add(createSystemEscrowTransaction(
+                        tx.getPublicKeyString(), loan.getLoanTokenAmount(), TransactionType.LOAN_ACCEPT, loan
+                ));
+            } else if (tx.getType() == TransactionType.LOAN_CANCEL) {
+                BigDecimal tokensToRefund = (loan.getProposalType() == ProposalType.BORROW)
+                        ? loan.getCollateralTokenAmount()
+                        : loan.getLoanTokenAmount();
+                if (tokensToRefund != null && tokensToRefund.compareTo(BigDecimal.ZERO) > 0) {
+                    escrowTxs.add(createSystemEscrowTransaction(
+                            tx.getPublicKeyString(), tokensToRefund, TransactionType.LOAN_CANCEL, loan
+                    ));
+                }
+            } else if (tx.getType() == TransactionType.LOAN_REPAY
+                        && loan.getCollateralTokenAmount() != null
+                        && loan.getCollateralTokenAmount().compareTo(BigDecimal.ZERO) > 0) {
+                escrowTxs.add(createSystemEscrowTransaction(
+                        tx.getPublicKeyString(), loan.getCollateralTokenAmount(), TransactionType.LOAN_REPAY, loan
+                ));
+            }
+        }
         Transaction rewardTx = Transaction.createCoinbaseTransaction(minerAddress, BigDecimal.valueOf(12.5));
 
         List<Transaction> allTransactions = new ArrayList<>();
         allTransactions.add(rewardTx);
         allTransactions.addAll(validTxs);
+        allTransactions.addAll(escrowTxs);
         Block previousBlock = getLatestBlock();
         Block newBlock = new Block(previousBlock.getHash(), allTransactions, currentDifficulty);
         if (!newBlock.isValid(utxoSet)) {
@@ -98,30 +128,10 @@ public class Blockchain {
 
             } else if (tx.getType() == TransactionType.LOAN_ACCEPT) {
                 loanService.processBlockchainAccept(loan, tx.getPublicKeyString());
-                if (loan.getProposalType() == ProposalType.LEND
-                        && loan.getLoanTokenAmount() != null
-                        && loan.getLoanTokenAmount().compareTo(BigDecimal.ZERO) > 0) {
-                    Transaction escrowOut = createSystemEscrowTransaction(
-                            tx.getPublicKeyString(), loan.getLoanTokenAmount(), TransactionType.LOAN_ACCEPT, loan);
-                    utxoSet.processTransaction(escrowOut);
-                }
             } else if (tx.getType() == TransactionType.LOAN_CANCEL) {
                 loanService.processBlockchainCancel(loan, tx.getPublicKeyString());
-                BigDecimal tokensToRefund = (loan.getProposalType() == ProposalType.BORROW)
-                        ? loan.getCollateralTokenAmount()
-                        : loan.getLoanTokenAmount();
-                if (tokensToRefund != null && tokensToRefund.compareTo(BigDecimal.ZERO) > 0) {
-                    Transaction escrowRefund = createSystemEscrowTransaction(
-                            tx.getPublicKeyString(), tokensToRefund, TransactionType.LOAN_CANCEL, loan);
-                    utxoSet.processTransaction(escrowRefund);
-                }
             } else if (tx.getType() == TransactionType.LOAN_REPAY) {
                 loanService.processBlockchainRepay(loan, tx.getAmount(), BigDecimal.ZERO);
-                if (loan.getCollateralTokenAmount() != null && loan.getCollateralTokenAmount().compareTo(BigDecimal.ZERO) > 0) {
-                    Transaction escrowReturn = createSystemEscrowTransaction(
-                            tx.getPublicKeyString(), loan.getCollateralTokenAmount(), TransactionType.LOAN_REPAY, loan);
-                    utxoSet.processTransaction(escrowReturn);
-                }
             }
         }
 
