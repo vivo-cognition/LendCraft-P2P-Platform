@@ -378,6 +378,13 @@ public class BlockchainController {
         if (user == null) return ResponseEntity.badRequest().body("Пользователь не найден");
 
         try {
+            com.lendcraft.blockchain.entity.LoanEntity existingLoan = loanRepository.findById(loanId)
+                    .orElseThrow(() -> new IllegalArgumentException("Заявка не найдена"));
+            boolean hasTokens = (existingLoan.getLoanTokenAmount() != null && existingLoan.getLoanTokenAmount().compareTo(BigDecimal.ZERO) > 0)
+                    || (existingLoan.getCollateralTokenAmount() != null && existingLoan.getCollateralTokenAmount().compareTo(BigDecimal.ZERO) > 0);
+            if (hasTokens) {
+                return ResponseEntity.badRequest().body("Заявки с токенами отменяются только через блокчейн!");
+            }
             com.lendcraft.blockchain.entity.LoanEntity cancelledLoan = loanService.cancelProposal(loanId, user.getPublicKey());
             return ResponseEntity.ok(cancelledLoan);
         } catch (Exception e) {
