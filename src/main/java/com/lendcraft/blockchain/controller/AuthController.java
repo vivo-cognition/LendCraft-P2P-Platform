@@ -250,4 +250,18 @@ public class AuthController {
                 "bio", user.getBio() != null ? user.getBio() : ""
         ));
     }
+
+    @GetMapping("/user/public")
+    public ResponseEntity<UserResponseDto> getUserByPublicKey(@RequestParam String publicKey) {
+        UserEntity user = userRepository.findByPublicKey(publicKey).orElse(null);
+        if (user != null) {
+            UserResponseDto response = new UserResponseDto(
+                    user.getUsername(), user.getTrustRating(),
+                    user.getPublicKey(), user.getEmail(), user.getBio()
+            );
+            return ResponseEntity.ok(response);
+        }
+        return ResponseEntity.notFound().build();
+    }
+
 }

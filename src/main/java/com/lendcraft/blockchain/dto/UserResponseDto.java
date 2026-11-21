@@ -21,6 +21,14 @@ public class UserResponseDto {
         this.email = email != null ? email : "";
         this.bio = bio != null ? bio : "";
     }
+    public UserResponseDto(String username, int trustRating,
+                           String publicKey, String email, String bio) {
+        this.username = username;
+        this.trustRating = trustRating;
+        this.publicKey = publicKey;
+        this.email = email != null ? email : "";
+        this.bio = bio != null ? bio : "";
+    }
 
     public String getPassportNumber() { return passportNumber; }
     public String getUsername() { return username; }
